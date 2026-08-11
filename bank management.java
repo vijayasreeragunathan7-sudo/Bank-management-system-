@@ -112,6 +112,22 @@ public class BankConsoleApp {
         System.out.println("Current Balance: ₹" + account.balance);
     }
 
+    // Close Account
+    public static void closeAccount() {
+        System.out.print("Enter Account ID to close: ");
+        int id = scanner.nextInt();
+        scanner.nextLine();
+
+        if (!accounts.containsKey(id)) {
+            System.out.println("Account not found!");
+            return;
+        }
+
+        accounts.remove(id);
+
+        System.out.println("Account closed successfully!");
+    }
+
     public static void main(String[] args) {
 
         while (true) {
@@ -121,7 +137,8 @@ public class BankConsoleApp {
             System.out.println("2. View Account");
             System.out.println("3. Deposit Money");
             System.out.println("4. Withdraw Money");
-            System.out.println("5. Exit");
+            System.out.println("5. Close Account");
+            System.out.println("6. Exit");
 
             System.out.print("Enter your choice: ");
             int choice = scanner.nextInt();
@@ -146,6 +163,10 @@ public class BankConsoleApp {
                     break;
 
                 case 5:
+                    closeAccount();
+                    break;
+
+                case 6:
                     System.out.println("Thank you for using SecureBank!");
                     scanner.close();
                     return;
@@ -155,4 +176,4 @@ public class BankConsoleApp {
             }
         }
     }
-                }
+    }
