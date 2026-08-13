@@ -1,33 +1,74 @@
 import java.util.HashMap;
 import java.util.Scanner;
 
-class Account {
-    int id;
-    String customerName;
-    double balance;
+// Custom exception for invalid account
+class AccountNotFoundException extends Exception {
 
-    Account(int id, String customerName, double balance) {
+    public AccountNotFoundException(String message) {
+        super(message);
+    }
+}
+
+// Custom exception for insufficient balance
+class InsufficientFundsException extends Exception {
+
+    public InsufficientFundsException(String message) {
+        super(message);
+    }
+}
+
+// Account class
+class Account {
+
+    private int id;
+    private String customerName;
+    private double balance;
+
+    public Account(int id, String customerName, double balance) {
         this.id = id;
         this.customerName = customerName;
         this.balance = balance;
     }
 
-    void displayAccount() {
-        System.out.println("Account ID: " + id);
-        System.out.println("Customer Name: " + customerName);
-        System.out.println("Balance: ₹" + balance);
+    public int getId() {
+        return id;
+    }
+
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public double getBalance() {
+        return balance;
+    }
+
+    public void deposit(double amount) {
+        balance += amount;
+    }
+
+    public void withdraw(double amount) {
+        balance -= amount;
+    }
+
+    public void displayAccount() {
+        System.out.println("Account ID     : " + id);
+        System.out.println("Customer Name  : " + customerName);
+        System.out.println("Balance        : ₹" + balance);
     }
 }
 
+// Main class
 public class BankConsoleApp {
 
     static HashMap<Integer, Account> accounts = new HashMap<>();
+
     static int nextAccountId = 1001;
 
     static Scanner scanner = new Scanner(System.in);
 
-    // Create Account
+    // Create account
     public static void createAccount() {
+
         System.out.print("Enter customer name: ");
         String name = scanner.nextLine();
 
@@ -41,21 +82,41 @@ public class BankConsoleApp {
         nextAccountId++;
     }
 
-    // View Account
+    // Find account
+    public static Account findAccount(int id)
+            throws AccountNotFoundException {
+
+        if (!accounts.containsKey(id)) {
+            throw new AccountNotFoundException(
+                    "Account with ID " + id + " not found!"
+            );
+        }
+
+        return accounts.get(id);
+    }
+
+    // View account / balance inquiry
     public static void viewAccount() {
+
         System.out.print("Enter Account ID: ");
         int id = scanner.nextInt();
         scanner.nextLine();
 
-        if (accounts.containsKey(id)) {
-            accounts.get(id).displayAccount();
-        } else {
-            System.out.println("Account not found!");
+        try {
+
+            Account account = findAccount(id);
+
+            account.displayAccount();
+
+        } catch (AccountNotFoundException e) {
+
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
-    // Deposit Money
+    // Deposit
     public static void deposit() {
+
         System.out.print("Enter Account ID: ");
         int id = scanner.nextInt();
 
@@ -63,25 +124,33 @@ public class BankConsoleApp {
         double amount = scanner.nextDouble();
         scanner.nextLine();
 
-        if (!accounts.containsKey(id)) {
-            System.out.println("Account not found!");
-            return;
+        try {
+
+            Account account = findAccount(id);
+
+            if (amount <= 0) {
+                System.out.println(
+                        "Error: Deposit amount must be greater than zero!"
+                );
+                return;
+            }
+
+            account.deposit(amount);
+
+            System.out.println("Amount deposited successfully!");
+            System.out.println(
+                    "Current Balance: ₹" + account.getBalance()
+            );
+
+        } catch (AccountNotFoundException e) {
+
+            System.out.println("Error: " + e.getMessage());
         }
-
-        if (amount <= 0) {
-            System.out.println("Deposit amount must be greater than zero!");
-            return;
-        }
-
-        Account account = accounts.get(id);
-        account.balance += amount;
-
-        System.out.println("Amount deposited successfully!");
-        System.out.println("Current Balance: ₹" + account.balance);
     }
 
-    // Withdraw Money
+    // Withdraw
     public static void withdraw() {
+
         System.out.print("Enter Account ID: ");
         int id = scanner.nextInt();
 
@@ -89,58 +158,79 @@ public class BankConsoleApp {
         double amount = scanner.nextDouble();
         scanner.nextLine();
 
-        if (!accounts.containsKey(id)) {
-            System.out.println("Account not found!");
-            return;
+        try {
+
+            Account account = findAccount(id);
+
+            if (amount <= 0) {
+                System.out.println(
+                        "Error: Withdrawal amount must be greater than zero!"
+                );
+                return;
+            }
+
+            if (amount > account.getBalance()) {
+
+                throw new InsufficientFundsException(
+                        "Insufficient funds! Available balance: ₹"
+                                + account.getBalance()
+                );
+            }
+
+            account.withdraw(amount);
+
+            System.out.println("Amount withdrawn successfully!");
+            System.out.println(
+                    "Current Balance: ₹" + account.getBalance()
+            );
+
+        } catch (AccountNotFoundException e) {
+
+            System.out.println("Error: " + e.getMessage());
+
+        } catch (InsufficientFundsException e) {
+
+            System.out.println("Error: " + e.getMessage());
         }
-
-        if (amount <= 0) {
-            System.out.println("Withdrawal amount must be greater than zero!");
-            return;
-        }
-
-        Account account = accounts.get(id);
-
-        if (amount > account.balance) {
-            System.out.println("Insufficient funds!");
-            return;
-        }
-
-        account.balance -= amount;
-
-        System.out.println("Amount withdrawn successfully!");
-        System.out.println("Current Balance: ₹" + account.balance);
     }
 
-    // Close Account
+    // Close account
     public static void closeAccount() {
+
         System.out.print("Enter Account ID to close: ");
         int id = scanner.nextInt();
         scanner.nextLine();
 
-        if (!accounts.containsKey(id)) {
-            System.out.println("Account not found!");
-            return;
+        try {
+
+            findAccount(id);
+
+            accounts.remove(id);
+
+            System.out.println("Account closed successfully!");
+
+        } catch (AccountNotFoundException e) {
+
+            System.out.println("Error: " + e.getMessage());
         }
-
-        accounts.remove(id);
-
-        System.out.println("Account closed successfully!");
     }
 
+    // Main menu
     public static void main(String[] args) {
 
         while (true) {
 
-            System.out.println("\n===== SECUREBANK =====");
+            System.out.println();
+            System.out.println("===== SECUREBANK =====");
             System.out.println("1. Create Account");
-            System.out.println("2. View Account");
+            System.out.println("2. View Balance");
             System.out.println("3. Deposit Money");
             System.out.println("4. Withdraw Money");
             System.out.println("5. Close Account");
             System.out.println("6. Exit");
 
             System.out.print("Enter your choice: ");
+
             int choice = scanner.nextInt();
             scanner.nextLine();
 
@@ -167,12 +257,16 @@ public class BankConsoleApp {
                     break;
 
                 case 6:
-                    System.out.println("Thank you for using SecureBank!");
+                    System.out.println(
+                            "Thank you for using SecureBank!"
+                    );
                     scanner.close();
                     return;
 
                 default:
-                    System.out.println("Invalid choice!");
+                    System.out.println(
+                            "Invalid choice! Please try again."
+                    );
             }
         }
     }
