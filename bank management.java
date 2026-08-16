@@ -1,238 +1,272 @@
-import java.util.HashMap;
-import java.util.Scanner;
+import java.util.*;
 
-// Custom exception for invalid account
-class AccountNotFoundException extends Exception {
-
-    public AccountNotFoundException(String message) {
-        super(message);
-    }
-}
-
-// Custom exception for insufficient balance
-class InsufficientFundsException extends Exception {
-
-    public InsufficientFundsException(String message) {
-        super(message);
-    }
-}
-
-// Account class
 class Account {
+    int id;
+    String customerName;
+    double balance;
 
-    private int id;
-    private String customerName;
-    private double balance;
+    List<Transaction> transactions = new ArrayList<>();
 
-    public Account(int id, String customerName, double balance) {
+    Account(int id, String customerName, double balance) {
         this.id = id;
         this.customerName = customerName;
         this.balance = balance;
     }
 
-    public int getId() {
-        return id;
-    }
-
-    public String getCustomerName() {
-        return customerName;
-    }
-
-    public double getBalance() {
-        return balance;
-    }
-
-    public void deposit(double amount) {
-        balance += amount;
-    }
-
-    public void withdraw(double amount) {
-        balance -= amount;
-    }
-
-    public void displayAccount() {
-        System.out.println("Account ID     : " + id);
-        System.out.println("Customer Name  : " + customerName);
-        System.out.println("Balance        : ₹" + balance);
+    void display() {
+        System.out.println("Account ID   : " + id);
+        System.out.println("Customer Name: " + customerName);
+        System.out.println("Balance      : " + balance);
     }
 }
 
-// Main class
+class Transaction {
+    int fromId;
+    int toId;
+    double amount;
+
+    Transaction(int fromId, int toId, double amount) {
+        this.fromId = fromId;
+        this.toId = toId;
+        this.amount = amount;
+    }
+}
+
 public class BankConsoleApp {
 
     static HashMap<Integer, Account> accounts = new HashMap<>();
 
-    static int nextAccountId = 1001;
+    static HashMap<String, List<Integer>> customerIndex = new HashMap<>();
 
-    static Scanner scanner = new Scanner(System.in);
+    static Scanner sc = new Scanner(System.in);
 
-    // Create account
-    public static void createAccount() {
-
-        System.out.print("Enter customer name: ");
-        String name = scanner.nextLine();
-
-        Account account = new Account(nextAccountId, name, 0);
-
-        accounts.put(nextAccountId, account);
-
-        System.out.println("Account created successfully!");
-        System.out.println("Your Account ID is: " + nextAccountId);
-
-        nextAccountId++;
-    }
-
-    // Find account
-    public static Account findAccount(int id)
-            throws AccountNotFoundException {
-
-        if (!accounts.containsKey(id)) {
-            throw new AccountNotFoundException(
-                    "Account with ID " + id + " not found!"
-            );
-        }
-
+    static Account getAccount(int id) {
         return accounts.get(id);
     }
 
-    // View account / balance inquiry
-    public static void viewAccount() {
+    static void createAccount() {
 
         System.out.print("Enter Account ID: ");
-        int id = scanner.nextInt();
-        scanner.nextLine();
+        int id = sc.nextInt();
+        sc.nextLine();
 
-        try {
-
-            Account account = findAccount(id);
-
-            account.displayAccount();
-
-        } catch (AccountNotFoundException e) {
-
-            System.out.println("Error: " + e.getMessage());
+        if (accounts.containsKey(id)) {
+            System.out.println("Account already exists!");
+            return;
         }
+
+        System.out.print("Enter Customer Name: ");
+        String name = sc.nextLine();
+
+        System.out.print("Enter Initial Balance: ");
+        double balance = sc.nextDouble();
+
+        if (balance < 0) {
+            System.out.println("Balance cannot be negative.");
+            return;
+        }
+
+        Account account = new Account(id, name, balance);
+
+        accounts.put(id, account);
+
+        customerIndex
+                .computeIfAbsent(name.toLowerCase(), k -> new ArrayList<>())
+                .add(id);
+
+        System.out.println("Account created successfully!");
     }
 
-    // Deposit
-    public static void deposit() {
+    static void deposit() {
 
         System.out.print("Enter Account ID: ");
-        int id = scanner.nextInt();
+        int id = sc.nextInt();
 
-        System.out.print("Enter deposit amount: ₹");
-        double amount = scanner.nextDouble();
-        scanner.nextLine();
+        Account account = getAccount(id);
 
-        try {
-
-            Account account = findAccount(id);
-
-            if (amount <= 0) {
-                System.out.println(
-                        "Error: Deposit amount must be greater than zero!"
-                );
-                return;
-            }
-
-            account.deposit(amount);
-
-            System.out.println("Amount deposited successfully!");
-            System.out.println(
-                    "Current Balance: ₹" + account.getBalance()
-            );
-
-        } catch (AccountNotFoundException e) {
-
-            System.out.println("Error: " + e.getMessage());
+        if (account == null) {
+            System.out.println("Account not found!");
+            return;
         }
+
+        System.out.print("Enter Amount: ");
+        double amount = sc.nextDouble();
+
+        if (amount <= 0) {
+            System.out.println("Invalid amount!");
+            return;
+        }
+
+        account.balance += amount;
+
+        System.out.println("Deposit successful!");
+        System.out.println("Balance: " + account.balance);
     }
 
-    // Withdraw
-    public static void withdraw() {
+    static void withdraw() {
 
         System.out.print("Enter Account ID: ");
-        int id = scanner.nextInt();
+        int id = sc.nextInt();
 
-        System.out.print("Enter withdrawal amount: ₹");
-        double amount = scanner.nextDouble();
-        scanner.nextLine();
+        Account account = getAccount(id);
 
-        try {
+        if (account == null) {
+            System.out.println("Account not found!");
+            return;
+        }
 
-            Account account = findAccount(id);
+        System.out.print("Enter Amount: ");
+        double amount = sc.nextDouble();
 
-            if (amount <= 0) {
-                System.out.println(
-                        "Error: Withdrawal amount must be greater than zero!"
-                );
-                return;
+        if (amount <= 0 || amount > account.balance) {
+            System.out.println("Invalid amount or insufficient funds!");
+            return;
+        }
+
+        account.balance -= amount;
+
+        System.out.println("Withdrawal successful!");
+        System.out.println("Balance: " + account.balance);
+    }
+
+    // Atomic transfer
+    static void transfer() {
+
+        System.out.print("Enter Source Account ID: ");
+        int fromId = sc.nextInt();
+
+        System.out.print("Enter Target Account ID: ");
+        int toId = sc.nextInt();
+
+        System.out.print("Enter Amount: ");
+        double amount = sc.nextDouble();
+
+        Account source = getAccount(fromId);
+        Account target = getAccount(toId);
+
+        if (source == null || target == null) {
+            System.out.println("Invalid source or target account!");
+            return;
+        }
+
+        if (fromId == toId) {
+            System.out.println("Source and target cannot be same!");
+            return;
+        }
+
+        if (amount <= 0 || amount > source.balance) {
+            System.out.println("Transfer failed!");
+            return;
+        }
+
+        // Atomic operation
+        source.balance -= amount;
+        target.balance += amount;
+
+        Transaction transaction =
+                new Transaction(fromId, toId, amount);
+
+        source.transactions.add(transaction);
+        target.transactions.add(transaction);
+
+        System.out.println("Transfer successful!");
+    }
+
+    // Reverse last transaction
+    static void reverseLastTransaction() {
+
+        System.out.print("Enter Account ID: ");
+        int id = sc.nextInt();
+
+        Account account = getAccount(id);
+
+        if (account == null) {
+            System.out.println("Account not found!");
+            return;
+        }
+
+        if (account.transactions.isEmpty()) {
+            System.out.println("No transaction to reverse!");
+            return;
+        }
+
+        Transaction transaction =
+                account.transactions.get(
+                        account.transactions.size() - 1);
+
+        Account source = getAccount(transaction.fromId);
+        Account target = getAccount(transaction.toId);
+
+        if (source == null || target == null) {
+            System.out.println("Transaction accounts not found!");
+            return;
+        }
+
+        target.balance -= transaction.amount;
+        source.balance += transaction.amount;
+
+        source.transactions.remove(transaction);
+        target.transactions.remove(transaction);
+
+        System.out.println("Last transaction reversed successfully!");
+    }
+
+    // Customer name index
+    static void searchCustomer() {
+
+        sc.nextLine();
+
+        System.out.print("Enter Customer Name: ");
+        String name = sc.nextLine().toLowerCase();
+
+        List<Integer> ids = customerIndex.get(name);
+
+        if (ids == null || ids.isEmpty()) {
+            System.out.println("No accounts found!");
+            return;
+        }
+
+        System.out.println("Accounts of " + name + ":");
+
+        for (int id : ids) {
+            Account account = accounts.get(id);
+
+            if (account != null) {
+                account.display();
+                System.out.println("--------------------");
             }
-
-            if (amount > account.getBalance()) {
-
-                throw new InsufficientFundsException(
-                        "Insufficient funds! Available balance: ₹"
-                                + account.getBalance()
-                );
-            }
-
-            account.withdraw(amount);
-
-            System.out.println("Amount withdrawn successfully!");
-            System.out.println(
-                    "Current Balance: ₹" + account.getBalance()
-            );
-
-        } catch (AccountNotFoundException e) {
-
-            System.out.println("Error: " + e.getMessage());
-
-        } catch (InsufficientFundsException e) {
-
-            System.out.println("Error: " + e.getMessage());
         }
     }
 
-    // Close account
-    public static void closeAccount() {
+    static void displayAll() {
 
-        System.out.print("Enter Account ID to close: ");
-        int id = scanner.nextInt();
-        scanner.nextLine();
+        if (accounts.isEmpty()) {
+            System.out.println("No accounts available!");
+            return;
+        }
 
-        try {
-
-            findAccount(id);
-
-            accounts.remove(id);
-
-            System.out.println("Account closed successfully!");
-
-        } catch (AccountNotFoundException e) {
-
-            System.out.println("Error: " + e.getMessage());
+        for (Account account : accounts.values()) {
+            account.display();
+            System.out.println("--------------------");
         }
     }
 
-    // Main menu
     public static void main(String[] args) {
 
         while (true) {
 
-            System.out.println();
-            System.out.println("===== SECUREBANK =====");
+            System.out.println("\n===== BANK MANAGEMENT SYSTEM =====");
             System.out.println("1. Create Account");
-            System.out.println("2. View Balance");
-            System.out.println("3. Deposit Money");
-            System.out.println("4. Withdraw Money");
-            System.out.println("5. Close Account");
-            System.out.println("6. Exit");
+            System.out.println("2. Deposit");
+            System.out.println("3. Withdraw");
+            System.out.println("4. Transfer Money");
+            System.out.println("5. Reverse Last Transaction");
+            System.out.println("6. Search Customer Accounts");
+            System.out.println("7. Display All Accounts");
+            System.out.println("8. Exit");
 
-            System.out.print("Enter your choice: ");
-
-            int choice = scanner.nextInt();
-            scanner.nextLine();
+            System.out.print("Enter choice: ");
+            int choice = sc.nextInt();
 
             switch (choice) {
 
@@ -241,33 +275,36 @@ public class BankConsoleApp {
                     break;
 
                 case 2:
-                    viewAccount();
-                    break;
-
-                case 3:
                     deposit();
                     break;
 
-                case 4:
+                case 3:
                     withdraw();
                     break;
 
+                case 4:
+                    transfer();
+                    break;
+
                 case 5:
-                    closeAccount();
+                    reverseLastTransaction();
                     break;
 
                 case 6:
-                    System.out.println(
-                            "Thank you for using SecureBank!"
-                    );
-                    scanner.close();
+                    searchCustomer();
+                    break;
+
+                case 7:
+                    displayAll();
+                    break;
+
+                case 8:
+                    System.out.println("Thank you!");
                     return;
 
                 default:
-                    System.out.println(
-                            "Invalid choice! Please try again."
-                    );
+                    System.out.println("Invalid choice!");
             }
         }
     }
-    }
+                }
